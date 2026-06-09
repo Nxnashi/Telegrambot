@@ -1,0 +1,207 @@
+2026-05-13 01:26:02,683 [INFO] __main__: Бот запущен
+2026-05-13 01:27:03,326 [ERROR] TeleBot: Threaded polling exception: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-13 01:27:03,328 [ERROR] TeleBot: Exception traceback:
+Traceback (most recent call last):
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\__init__.py", line 1248, in __threaded_polling
+    self.worker_pool.raise_exceptions()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\util.py", line 155, in raise_exceptions
+    raise self.exception_info
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\util.py", line 98, in run
+    task(*args, **kwargs)
+    ~~~~^^^^^^^^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\user_handlers.py", line 112, in <lambda>
+    bot.register_next_step_handler(message, lambda msg: get_photo(msg, bot))
+                                                        ~~~~~~~~~^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\user_handlers.py", line 143, in get_photo
+    send_to_operator(bot, request_id, text, photo_id)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\operator_handlers.py", line 48, in send_to_operator
+    msg = bot.send_message(
+        op_id,
+        text,
+        reply_markup=operator_keyboard(request_id)
+    )
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\__init__.py", line 1847, in send_message
+    apihelper.send_message(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        self.token, chat_id, text,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        suggested_post_parameters=suggested_post_parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 282, in send_message
+    return _make_request(token, method_url, params=payload, method='post')
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 168, in _make_request
+    json_result = _check_result(method_name, result)
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 197, in _check_result
+    raise ApiTelegramException(method_name, result, result_json)
+telebot.apihelper.ApiTelegramException: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+
+2026-05-13 01:27:19,242 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-13 01:27:19,243 [ERROR] TeleBot: Break infinity polling
+2026-05-13 01:27:21,682 [INFO] __main__: Бот запущен
+2026-05-13 01:28:02,405 [ERROR] TeleBot: Threaded polling exception: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-13 01:28:02,407 [ERROR] TeleBot: Exception traceback:
+Traceback (most recent call last):
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\__init__.py", line 1248, in __threaded_polling
+    self.worker_pool.raise_exceptions()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\util.py", line 155, in raise_exceptions
+    raise self.exception_info
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\util.py", line 98, in run
+    task(*args, **kwargs)
+    ~~~~^^^^^^^^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\user_handlers.py", line 112, in <lambda>
+    bot.register_next_step_handler(message, lambda msg: get_photo(msg, bot))
+                                                        ~~~~~~~~~^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\user_handlers.py", line 143, in get_photo
+    send_to_operator(bot, request_id, text, photo_id)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\operator_handlers.py", line 48, in send_to_operator
+    msg = bot.send_message(
+        op_id,
+        text,
+        reply_markup=operator_keyboard(request_id)
+    )
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\__init__.py", line 1847, in send_message
+    apihelper.send_message(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        self.token, chat_id, text,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        suggested_post_parameters=suggested_post_parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 282, in send_message
+    return _make_request(token, method_url, params=payload, method='post')
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 168, in _make_request
+    json_result = _check_result(method_name, result)
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 197, in _check_result
+    raise ApiTelegramException(method_name, result, result_json)
+telebot.apihelper.ApiTelegramException: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+
+2026-05-13 01:29:29,734 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-13 01:29:29,734 [ERROR] TeleBot: Break infinity polling
+2026-05-13 01:29:31,549 [INFO] __main__: Бот запущен
+2026-05-13 01:29:51,704 [ERROR] TeleBot: Threaded polling exception: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-13 01:29:51,706 [ERROR] TeleBot: Exception traceback:
+Traceback (most recent call last):
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\__init__.py", line 1248, in __threaded_polling
+    self.worker_pool.raise_exceptions()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\util.py", line 155, in raise_exceptions
+    raise self.exception_info
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\util.py", line 98, in run
+    task(*args, **kwargs)
+    ~~~~^^^^^^^^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\user_handlers.py", line 112, in <lambda>
+    bot.register_next_step_handler(message, lambda msg: get_photo(msg, bot))
+                                                        ~~~~~~~~~^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\user_handlers.py", line 143, in get_photo
+    send_to_operator(bot, request_id, text, photo_id)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "e:\TG bot\Restuarant_bot\handlers\operator_handlers.py", line 48, in send_to_operator
+    msg = bot.send_message(
+        op_id,
+        text,
+        reply_markup=operator_keyboard(request_id)
+    )
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\__init__.py", line 1847, in send_message
+    apihelper.send_message(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        self.token, chat_id, text,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        suggested_post_parameters=suggested_post_parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 282, in send_message
+    return _make_request(token, method_url, params=payload, method='post')
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 168, in _make_request
+    json_result = _check_result(method_name, result)
+  File "C:\Users\Nanashi\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\telebot\apihelper.py", line 197, in _check_result
+    raise ApiTelegramException(method_name, result, result_json)
+telebot.apihelper.ApiTelegramException: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+
+2026-05-13 01:30:52,606 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-13 01:30:52,606 [ERROR] TeleBot: Break infinity polling
+2026-05-13 01:30:54,949 [INFO] __main__: Бот запущен
+2026-05-13 01:31:17,416 [ERROR] handlers.operator_handlers: Ошибка отправки заявки оператору 55594273: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-13 01:31:17,545 [INFO] handlers.user_handlers: Новая заявка #5 от пользователя 5045886468
+2026-05-13 01:31:23,716 [ERROR] handlers.operator_handlers: Ошибка редактирования кнопок: A request to the Telegram API was unsuccessful. Error code: 400. Description: Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-05-13 01:31:23,868 [ERROR] handlers.operator_handlers: Ошибка редактирования кнопок: A request to the Telegram API was unsuccessful. Error code: 400. Description: Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-05-13 01:31:24,217 [INFO] handlers.operator_handlers: Заявка #5 взята оператором Nanashi
+2026-05-13 01:31:33,732 [INFO] handlers.operator_handlers: Заявка #5 выполнена оператором Nanashi
+2026-05-13 01:31:36,525 [ERROR] handlers.operator_handlers: Ошибка отправки отзыва оператору 55594273: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-13 01:38:19,205 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-13 01:38:19,205 [ERROR] TeleBot: Break infinity polling
+2026-05-13 01:38:19,524 [INFO] __main__: Бот запущен
+2026-05-13 01:38:43,916 [ERROR] handlers.operator_handlers: Ошибка отправки заявки оператору 55594273: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-13 01:38:44,050 [INFO] handlers.user_handlers: Новая заявка #6 от пользователя 5045886468
+2026-05-13 01:38:49,292 [ERROR] handlers.operator_handlers: Ошибка редактирования кнопок: A request to the Telegram API was unsuccessful. Error code: 400. Description: Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-05-13 01:38:49,555 [ERROR] handlers.operator_handlers: Ошибка редактирования кнопок: A request to the Telegram API was unsuccessful. Error code: 400. Description: Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-05-13 01:38:50,047 [INFO] handlers.operator_handlers: Заявка #6 взята оператором Nanashi
+2026-05-13 01:39:04,921 [INFO] handlers.operator_handlers: Заявка #6 выполнена оператором Nanashi
+2026-05-14 01:11:23,686 [INFO] __main__: Бот запущен
+2026-05-14 01:14:02,521 [INFO] handlers.operator_handlers: Заявка #4 взята оператором Nanashi
+2026-05-14 01:14:03,441 [INFO] handlers.operator_handlers: Заявка #4 выполнена оператором Nanashi
+2026-05-14 01:14:04,621 [INFO] handlers.operator_handlers: Заявка #3 взята оператором Nanashi
+2026-05-14 01:14:05,414 [INFO] handlers.operator_handlers: Заявка #3 выполнена оператором Nanashi
+2026-05-14 01:14:43,012 [INFO] handlers.operator_handlers: Заявка #2 выполнена оператором Nanashi
+2026-05-14 01:14:49,530 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:14:49,531 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:15:05,437 [INFO] __main__: Бот запущен
+2026-05-14 01:17:19,875 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:17:19,876 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:17:29,016 [INFO] __main__: Бот запущен
+2026-05-14 01:18:57,172 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:18:57,173 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:19:00,818 [INFO] __main__: Бот запущен
+2026-05-14 01:21:45,704 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:21:45,704 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:21:48,174 [INFO] __main__: Бот запущен
+2026-05-14 01:23:57,077 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:23:57,078 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:23:59,390 [INFO] __main__: Бот запущен
+2026-05-14 01:26:27,115 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:26:27,115 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:26:39,231 [INFO] __main__: Бот запущен
+2026-05-14 01:30:14,960 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:30:14,960 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:30:17,092 [INFO] __main__: Бот запущен
+2026-05-14 01:31:01,166 [INFO] __main__: Бот запущен
+2026-05-14 01:32:09,070 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:32:09,071 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:32:34,616 [INFO] __main__: Бот запущен
+2026-05-14 01:33:18,268 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:33:18,268 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:33:18,596 [INFO] __main__: Бот запущен
+2026-05-14 01:34:26,167 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:34:26,168 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:34:27,997 [INFO] __main__: Бот запущен
+2026-05-14 01:35:30,233 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:35:30,233 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:35:33,280 [INFO] __main__: Бот запущен
+2026-05-14 01:36:48,457 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:36:48,457 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:36:51,873 [INFO] __main__: Бот запущен
+2026-05-14 01:38:11,463 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:38:11,464 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:38:13,475 [INFO] __main__: Бот запущен
+2026-05-14 01:40:10,486 [ERROR] TeleBot: Infinity polling: polling exited
+2026-05-14 01:40:10,486 [ERROR] TeleBot: Break infinity polling
+2026-05-14 01:40:48,891 [INFO] __main__: Бот запущен
+2026-05-15 22:13:03,438 [INFO] __main__: Бот запущен
+2026-05-15 22:13:52,846 [ERROR] handlers.operator_handlers: Ошибка отправки заявки оператору 55594273: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-15 22:13:53,331 [INFO] handlers.user_handlers: Новая заявка #1 от пользователя 5045886468
+2026-05-15 22:13:59,214 [ERROR] handlers.operator_handlers: Ошибка редактирования кнопок: A request to the Telegram API was unsuccessful. Error code: 400. Description: Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-05-15 22:13:59,322 [ERROR] handlers.operator_handlers: Ошибка редактирования кнопок: A request to the Telegram API was unsuccessful. Error code: 400. Description: Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-05-15 22:13:59,677 [INFO] handlers.operator_handlers: Заявка #1 взята оператором Nanashi
+2026-05-15 22:14:13,067 [INFO] handlers.operator_handlers: Заявка #1 выполнена оператором Nanashi
+2026-05-15 22:14:17,220 [ERROR] handlers.operator_handlers: Ошибка отправки отзыва оператору 55594273: A request to the Telegram API was unsuccessful. Error code: 403. Description: Forbidden: bot was blocked by the user
+2026-05-16 16:08:07,043 [INFO] __main__: Бот запущен
