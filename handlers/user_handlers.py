@@ -18,17 +18,20 @@ def register_user_handlers(bot):
     # =========================
     @bot.message_handler(commands=["start"])
     def start(message):
-        if message.from_user.id in OPERATOR_IDS:
-            from keyboards import operator_menu, admin_menu
-            from config import ADMIN_IDS
-            if message.from_user.id in ADMIN_IDS:
-                bot.send_message(message.chat.id, "Добро пожаловать, админ! Напишите /admin для панели администратора.", reply_markup=operator_menu())
-            else:
-                bot.send_message(message.chat.id, "Добро пожаловать!", reply_markup=operator_menu())
-            return
-        
-        bot.send_message(message.chat.id, "Введите ваше имя")
-        bot.register_next_step_handler(message, lambda msg: get_name(msg, bot))
+        logger.info(f"/start от {message.from_user.id}, OPERATOR_IDS: {OPERATOR_IDS}")
+        try:
+            if message.from_user.id in OPERATOR_IDS:
+                from keyboards import operator_menu
+                from config import ADMIN_IDS
+                if message.from_user.id in ADMIN_IDS:
+                    bot.send_message(message.chat.id, "Добро пожаловать, админ! Напишите /admin для панели администратора.", reply_markup=operator_menu())
+                else:
+                    bot.send_message(message.chat.id, "Добро пожаловать!", reply_markup=operator_menu())
+                return
+            bot.send_message(message.chat.id, "Введите ваше имя")
+            bot.register_next_step_handler(message, lambda msg: get_name(msg, bot))
+        except Exception as e:
+            logger.error(f"Ошибка в /start: {e}")
 
     # =========================
     # HISTORY
