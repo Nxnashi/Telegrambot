@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # =========================
 # BOT
 # =========================
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, threaded=False)
 
 # =========================
 # FLASK
@@ -53,12 +53,13 @@ register_admin_handlers(bot)
 def webhook():
     if request.headers.get("content-type") == "application/json":
         json_string = request.get_data().decode("utf-8")
-        logger.debug(f"Incoming update: {json_string[:200]}")
+        logger.debug(f"Incoming update: {json_string[:300]}")
         try:
             update = telebot.types.Update.de_json(json_string)
             bot.process_new_updates([update])
+            logger.debug("Update processed OK")
         except Exception as e:
-            logger.error(f"Ошибка обработки update: {e}")
+            logger.exception(f"Ошибка обработки update: {e}")
         return "OK", 200
     return "Forbidden", 403
 
