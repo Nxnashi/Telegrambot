@@ -15,7 +15,7 @@ from handlers.admin_handlers import register_admin_handlers
 # LOGGING
 # =========================
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.StreamHandler()
@@ -53,8 +53,12 @@ register_admin_handlers(bot)
 def webhook():
     if request.headers.get("content-type") == "application/json":
         json_string = request.get_data().decode("utf-8")
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
+        logger.debug(f"Incoming update: {json_string[:200]}")
+        try:
+            update = telebot.types.Update.de_json(json_string)
+            bot.process_new_updates([update])
+        except Exception as e:
+            logger.error(f"Ошибка обработки update: {e}")
         return "OK", 200
     return "Forbidden", 403
 
