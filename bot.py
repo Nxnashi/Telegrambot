@@ -1,6 +1,5 @@
 import logging
 import os
-import atexit
 import telebot
 
 from flask import Flask, request
@@ -73,11 +72,6 @@ def setup_webhook():
     bot.set_webhook(url=WEBHOOK_URL)
     logger.info(f"Webhook установлен: {WEBHOOK_URL}")
 
-def teardown_webhook():
-    bot.remove_webhook()
-    logger.info("Webhook удалён")
-
-atexit.register(teardown_webhook)
 
 # =========================
 # MAIN
