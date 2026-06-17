@@ -23,14 +23,16 @@ def operator_keyboard(request_id):
 # =========================
 # SEND TO OPERATOR
 # =========================
-def send_to_operator(bot, request_id, text, photo_id=None):
+def send_to_operator(bot, request_id, text, photo_id=None, file_type=None):
     conn = get_conn()
     cursor = conn.cursor()
 
     for op_id in OPERATOR_IDS:
         try:
-            if photo_id:
+            if photo_id and file_type == "photo":
                 msg = bot.send_photo(op_id, photo_id, caption=text, reply_markup=operator_keyboard(request_id))
+            elif photo_id and file_type == "document":
+                msg = bot.send_document(op_id, photo_id, caption=text, reply_markup=operator_keyboard(request_id))
             else:
                 msg = bot.send_message(op_id, text, reply_markup=operator_keyboard(request_id))
 
@@ -286,8 +288,7 @@ def register_operator_handlers(bot):
                     else:
                         bot.edit_message_reply_markup(operator_id, message_id, reply_markup=None)
                 except Exception as e:
-                    if "message is not modified" not in str(e):
-                        logger.error(f"Ошибка редактирования кнопок: {e}")
+                    logger.error(f"Ошибка редактирования кнопок: {e}")
 
             bot.answer_callback_query(call.id)
             bot.send_message(
@@ -375,8 +376,7 @@ def register_operator_handlers(bot):
             try:
                 bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
             except Exception as e:
-                if "message is not modified" not in str(e):
-                    logger.error(f"Ошибка удаления кнопок оценки: {e}")
+                logger.error(f"Ошибка удаления кнопок оценки: {e}")
 
             if rating == "1":
                 user_data[chat_id] = {"request_id": request_id, "rating": "Плохо"}
@@ -404,7 +404,6 @@ def register_operator_handlers(bot):
 
         user_id = chat[1]
         operator_name = message.from_user.first_name
- 
         try:
             bot.send_message(user_id, f"💬 Оператор {operator_name}:\n{message.text}")
         except Exception as e:
