@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 user_data = {}
 
+# Пользователи в режиме сбора описания
+collecting = {}
+
 
 def register_user_handlers(bot):
 
@@ -49,7 +52,6 @@ def register_user_handlers(bot):
             return
 
         text = "📋 Ваши последние заявки:\n\n"
-
         for row in rows:
             request_id, restaurant, status, operator_name, rating = row
             text += f"📌 Заявка #{request_id}\n"
@@ -104,64 +106,114 @@ def register_user_handlers(bot):
     # =========================
     def get_restaurant(message, bot):
         user_data[message.chat.id]["restaurant"] = message.text
-        bot.send_message(message.chat.id, "Опишите проблему")
-        bot.register_next_step_handler(message, lambda msg: get_request_text(msg, bot))
-
-    # =========================
-    # REQUEST TEXT
-    # =========================
-    def get_request_text(message, bot):
-        user_data[message.chat.id]["request_text"] = message.text
 
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("Пропустить")
+        markup.add(types.KeyboardButton("✅ Готово"))
 
         bot.send_message(
             message.chat.id,
-            "Прикрепите фото или нажмите Пропустить",
+            "Опишите проблему — отправьте текст, фото или файлы.\nКогда закончите, нажмите *✅ Готово*.",
+            parse_mode="Markdown",
             reply_markup=markup
         )
-        bot.register_next_step_handler(message, lambda msg: get_photo(msg, bot))
+
+        # Инициализируем сбор
+        collecting[message.chat.id] = {
+            "texts": [],
+            "files": []  # list of (file_id, file_type)
+        }
+
+        bot.register_next_step_handler(message, lambda msg: collect_description(msg, bot))
 
     # =========================
-    # PHOTO + SEND TO OPERATOR
+    # COLLECT DESCRIPTION
     # =========================
-    def get_photo(message, bot):
-        photo_id = None
-        if message.photo:
-            photo_id = message.photo[-1].file_id
+    def collect_description(message, bot):
+        chat_id = message.chat.id
 
-        data = user_data.get(message.chat.id)
-        if not data:
-            bot.send_message(message.chat.id, "Ошибка данных, начните заново /start")
+        # Нажал "Готово"
+        if message.text == "✅ Готово":
+            _finish_request(message, bot)
             return
+
+        data = collecting.get(chat_id)
+        if data is None:
+            return
+
+        # Собираем текст
+        text = message.text or message.caption or ""
+        if text:
+            data["texts"].append(text)
+
+        # Собираем файлы
+        if message.photo:
+            data["files"].append((message.photo[-1].file_id, "photo"))
+        elif message.document:
+            data["files"].append((message.document.file_id, "document"))
+
+        # Продолжаем слушать
+        bot.register_next_step_handler(message, lambda msg: collect_description(msg, bot))
+
+    # =========================
+    # FINISH REQUEST
+    # =========================
+    def _finish_request(message, bot):
+        chat_id = message.chat.id
+        data = user_data.get(chat_id)
+        collected = collecting.get(chat_id)
+
+        if not data or collected is None:
+            bot.send_message(chat_id, "Ошибка данных, начните заново /start")
+            return
+
+        # Собираем весь текст
+        full_text = "\n".join(collected["texts"]) if collected["texts"] else "—"
+        files = collected["files"]
+
+        # Берём первый файл для БД (основной)
+        photo_id = files[0][0] if files else None
+        file_type = files[0][1] if files else None
 
         request_id = create_request(
             message.from_user.id,
             data["restaurant"],
-            data["request_text"],
+            full_text,
             photo_id
         )
 
         text = f"""📌 Новая заявка #{request_id}
 
-        👤 Имя: {data["name"]}
-        📞 Телефон: {data["phone"]}
-        🏪 Ресторан: {data["restaurant"]}
-        
-        📝 Описание:
-        {data["request_text"]}"""
+👤 Имя: {data["name"]}
+📞 Телефон: {data["phone"]}
+🏪 Ресторан: {data["restaurant"]}
 
-        send_to_operator(bot, request_id, text, photo_id)
+📝 Описание:
+{full_text}"""
+
+        # Отправляем заявку оператору
+        send_to_operator(bot, request_id, text, photo_id, file_type)
+
+        # Если файлов больше одного — отправляем остальные отдельно
+        if len(files) > 1:
+            for fid, ftype in files[1:]:
+                for op_id in OPERATOR_IDS:
+                    try:
+                        if ftype == "photo":
+                            bot.send_photo(op_id, fid, caption=f"📎 Доп. файл к заявке #{request_id}")
+                        else:
+                            bot.send_document(op_id, fid, caption=f"📎 Доп. файл к заявке #{request_id}")
+                    except Exception as e:
+                        logger.error(f"Ошибка отправки доп. файла оператору {op_id}: {e}")
 
         from keyboards import user_menu
         bot.send_message(
-            message.chat.id,
+            chat_id,
             "Заявка отправлена ✅",
             reply_markup=user_menu()
         )
 
-        user_data.pop(message.chat.id, None)
+        user_data.pop(chat_id, None)
+        collecting.pop(chat_id, None)
         logger.info(f"Новая заявка #{request_id} от пользователя {message.from_user.id}")
 
     # =========================
@@ -197,6 +249,10 @@ def register_user_handlers(bot):
     # =========================
     @bot.message_handler(func=lambda message: message.from_user.id not in OPERATOR_IDS and not (message.text or "").startswith("/"))
     def user_message(message):
+        # Если пользователь в режиме сбора — не перехватываем
+        if message.chat.id in collecting:
+            return
+
         from database import get_chat_by_user
         chat = get_chat_by_user(message.chat.id)
 
@@ -207,9 +263,13 @@ def register_user_handlers(bot):
         operator_id = chat[1]
 
         try:
-            bot.send_message(
-                operator_id,
-                f"💬 Пользователь (заявка #{request_id}):\n{message.text}"
-            )
+            if message.photo:
+                bot.send_photo(operator_id, message.photo[-1].file_id,
+                            caption=f"💬 Пользователь (заявка #{request_id}):" + (message.caption or ""))
+            elif message.document:
+                bot.send_document(operator_id, message.document.file_id,
+                                caption=f"💬 Пользователь (заявка #{request_id}):" + (message.caption or ""))
+            else:
+                bot.send_message(operator_id, f"💬 Пользователь (заявка #{request_id}):\n{message.text}")
         except Exception as e:
             logger.error(f"Ошибка пересылки сообщения оператору {operator_id}: {e}")
