@@ -37,3 +37,8 @@ ADMIN_IDS = [
 # MINI APP (Telegram Web App)
 # =========================
 WEBAPP_URL = os.getenv("WEBAPP_URL")
+
+# =========================
+# ОПЕРАТОРСКАЯ ДОСКА (Mini App)
+# =========================
+DASHBOARD_URL = os.getenv("DASHBOARD_URL")
