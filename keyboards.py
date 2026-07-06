@@ -50,15 +50,10 @@ def user_menu():
 
 def operator_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("📊 Статистика"))
-    markup.add(KeyboardButton("📋 Активные заявки"))
     markup.add(KeyboardButton("🗂 Доска заявок"))
     return markup
 
 def admin_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("📊 Статистика операторов"))
-    markup.add(KeyboardButton("📥 Экспорт заявок в Excel"))
-    markup.add(KeyboardButton("📋 Активные заявки"))
     markup.add(KeyboardButton("🗂 Доска заявок"))
     return markup
