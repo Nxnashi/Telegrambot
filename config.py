@@ -32,3 +32,8 @@ ADMIN_IDS = [
     for x in os.getenv("ADMIN_IDS", "").split(",")
     if x.strip()
 ]
+
+# =========================
+# MINI APP (Telegram Web App)
+# =========================
+WEBAPP_URL = os.getenv("WEBAPP_URL")
