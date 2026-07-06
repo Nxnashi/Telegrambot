@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Новая заявка</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="/webapp/app.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Новая заявка</h1>
+    <p class="subtitle">Заполните форму — мы передадим её оператору</p>
+
+    <div class="field">
+      <label for="name">Ваше имя</label>
+      <input type="text" id="name" placeholder="Иван Иванов">
+    </div>
+
+    <div class="field">
+      <label for="phone">Телефон</label>
+      <input type="tel" id="phone" placeholder="+998 90 123 45 67">
+    </div>
+
+    <div class="field">
+      <label for="restaurant">Название ресторана</label>
+      <input type="text" id="restaurant" placeholder="Например: Plov Center">
+    </div>
+
+    <div class="field">
+      <label for="description">Опишите проблему</label>
+      <textarea id="description" rows="5" placeholder="Что случилось?"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Фото (по желанию, можно несколько)</label>
+      <label class="file-btn" for="photos">📎 Прикрепить фото</label>
+      <input type="file" id="photos" accept="image/*" multiple hidden>
+      <div id="photoPreview" class="photo-preview"></div>
+    </div>
+
+    <p id="errorText" class="error"></p>
+  </div>
+
+  <script src="/webapp/app.js"></script>
+</body>
+</html>
