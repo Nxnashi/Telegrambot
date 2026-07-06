@@ -26,6 +26,7 @@ def register_admin_handlers(bot):
         markup.add(KeyboardButton("📊 Статистика операторов"))
         markup.add(KeyboardButton("📥 Экспорт заявок в Excel"))
         markup.add(KeyboardButton("📋 Активные заявки"))
+        markup.add(KeyboardButton("🗂 Доска заявок"))
 
         from telebot.types import ReplyKeyboardRemove
         bot.send_message(message.chat.id, "...", reply_markup=ReplyKeyboardRemove())
