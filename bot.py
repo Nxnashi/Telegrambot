@@ -10,6 +10,7 @@ from database import create_tables
 from handlers.user_handlers import register_user_handlers
 from handlers.operator_handlers import register_operator_handlers
 from handlers.admin_handlers import register_admin_handlers
+from webapp import register_webapp
 
 # =========================
 # LOGGING
@@ -45,6 +46,7 @@ create_tables()
 register_user_handlers(bot)
 register_operator_handlers(bot)
 register_admin_handlers(bot)
+register_webapp(app, bot)
 
 # =========================
 # WEBHOOK ROUTE
