@@ -267,3 +267,40 @@ def get_all_requests():
 
     return cursor.fetchall()
 
+
+def get_request_by_id(request_id):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        r.id, r.user_id, r.restaurant_name, r.request_text,
+        r.status, r.operator_name, r.rating,
+        u.name, u.phone
+    FROM requests r
+    LEFT JOIN users u ON u.telegram_id = r.user_id
+    WHERE r.id = ?
+    """, (request_id,))
+
+    return cursor.fetchone()
+
+
+def get_dashboard_requests(done_limit=20):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    base_select = """
+    SELECT
+        r.id, r.restaurant_name, r.status, r.operator_name,
+        r.request_text, r.rating, u.name, u.phone
+    FROM requests r
+    LEFT JOIN users u ON u.telegram_id = r.user_id
+    """
+
+    cursor.execute(base_select + "WHERE r.status != 'Выполнено' ORDER BY r.id DESC")
+    active = cursor.fetchall()
+
+    cursor.execute(base_select + "WHERE r.status = 'Выполнено' ORDER BY r.id DESC LIMIT ?", (done_limit,))
+    done = cursor.fetchall()
+
+    return active + done
