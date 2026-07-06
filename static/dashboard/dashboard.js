@@ -55,21 +55,194 @@ function openReasonModal(title, onConfirm) {
   reasonOverlay.hidden = false;
 }
 
-modalCancelBtn.addEventListener("click", () => {
-  reasonOverlay.hidden = true;
-  modalOnConfirm = null;
-  loadRequests(); // сбрасываем карточку на место, если её уже перетащили визуально
-});
+if (modalCancelBtn) {
+  modalCancelBtn.addEventListener("click", () => {
+    reasonOverlay.hidden = true;
+    modalOnConfirm = null;
+    loadRequests(); // сбрасываем карточку на место, если её уже перетащили визуально
+  });
+}
 
-modalConfirmBtn.addEventListener("click", () => {
-  const reason = modalReason.value.trim();
-  const callback = modalOnConfirm;
-  reasonOverlay.hidden = true;
-  modalOnConfirm = null;
-  if (callback) callback(reason);
-});
+if (modalConfirmBtn) {
+  modalConfirmBtn.addEventListener("click", () => {
+    const reason = modalReason.value.trim();
+    const callback = modalOnConfirm;
+    reasonOverlay.hidden = true;
+    modalOnConfirm = null;
+    if (callback) callback(reason);
+  });
+}
 
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str;
-  return
+  return div.innerHTML;
+}
+
+function renderCard(item, column) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.dataset.id = item.id;
+
+  const desc = (item.description || "").slice(0, 120);
+
+  let actions = "";
+  if (column === "progress") {
+    actions = `
+      <div class="card-actions">
+        <button class="action-btn" data-action="postpone" data-id="${item.id}">⏸ Отложить</button>
+        <button class="action-btn" data-action="cancel" data-id="${item.id}">🚫 Отменить</button>
+      </div>`;
+  } else if (column === "postponed") {
+    actions = `
+      <div class="card-actions">
+        <button class="action-btn" data-action="resume" data-id="${item.id}">▶️ Возобновить</button>
+        <button class="action-btn" data-action="cancel" data-id="${item.id}">🚫 Отменить</button>
+      </div>`;
+  }
+
+  const showReason = (item.status === "Отменена" || item.status === "Отложена") && item.reason;
+
+  card.innerHTML = `
+    <div class="card-top">
+      <span>${escapeHtml(item.restaurant || "")}</span>
+      <span class="card-id">#${item.id}</span>
+    </div>
+    <div class="card-desc">${escapeHtml(desc)}</div>
+    ${item.operator_name ? `<div class="card-meta">👨‍💼 ${escapeHtml(item.operator_name)}</div>` : ""}
+    ${item.rating ? `<div class="card-meta">⭐ ${escapeHtml(item.rating)}</div>` : ""}
+    ${showReason ? `<div class="card-meta">📝 ${escapeHtml(item.reason)}</div>` : ""}
+    ${actions}
+  `;
+
+  card.addEventListener("click", (e) => {
+    if (e.target.closest(".action-btn")) return;
+    if (isDragging) return;
+    tg.showPopup({
+      title: `Заявка #${item.id}`,
+      message: [
+        item.name ? `Имя: ${item.name}` : null,
+        item.phone ? `Телефон: ${item.phone}` : null,
+        `Ресторан: ${item.restaurant}`,
+        `Статус: ${item.status}`,
+        item.operator_name ? `Оператор: ${item.operator_name}` : null,
+        item.reason ? `Причина: ${item.reason}` : null,
+        "",
+        item.description || ""
+      ].filter(Boolean).join("\n"),
+      buttons: [{ type: "ok" }]
+    });
+  });
+
+  return card;
+}
+
+function toggleEmpty(listEl) {
+  listEl.classList.toggle("empty", listEl.children.length === 0);
+}
+
+async function loadRequests() {
+  try {
+    const res = await fetch(`/api/dashboard/requests?initData=${encodeURIComponent(initData)}`);
+    const data = await res.json();
+    if (!data.ok) {
+      showToast("Нет доступа");
+      return;
+    }
+
+    listNew.innerHTML = "";
+    listProgress.innerHTML = "";
+    listPostponed.innerHTML = "";
+    listDone.innerHTML = "";
+    listCancelled.innerHTML = "";
+
+    data.items.forEach((item) => {
+      const column = statusToColumn(item.status);
+      const card = renderCard(item, column);
+      if (column === "new") listNew.appendChild(card);
+      else if (column === "progress") listProgress.appendChild(card);
+      else if (column === "postponed") listPostponed.appendChild(card);
+      else if (column === "cancelled") listCancelled.appendChild(card);
+      else listDone.appendChild(card);
+    });
+
+    countNew.textContent = listNew.children.length;
+    countProgress.textContent = listProgress.children.length;
+    countPostponed.textContent = listPostponed.children.length;
+    countDone.textContent = listDone.children.length;
+    countCancelled.textContent = listCancelled.children.length;
+
+    [listNew, listProgress, listPostponed, listDone, listCancelled].forEach(toggleEmpty);
+  } catch (e) {
+    showToast("Нет соединения с сервером");
+  }
+}
+
+async function callTransition(action, id, reason) {
+  const formData = new FormData();
+  formData.append("initData", initData);
+  formData.append("request_id", id);
+  if (reason !== undefined) formData.append("reason", reason);
+
+  try {
+    const res = await fetch(`/api/dashboard/${action}`, { method: "POST", body: formData });
+    const data = await res.json();
+    if (!data.ok) {
+      showToast(data.message || "Не удалось выполнить действие");
+    } else if (tg.HapticFeedback) {
+      tg.HapticFeedback.notificationOccurred("success");
+    }
+    return data.ok;
+  } catch (e) {
+    showToast("Нет соединения с сервером");
+    return false;
+  }
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".action-btn");
+  if (!btn) return;
+
+  const action = btn.dataset.action;
+  const id = btn.dataset.id;
+
+  if (action === "resume") {
+    callTransition("resume", id).then(loadRequests);
+  } else if (action === "postpone") {
+    openReasonModal(`Отложить заявку #${id} — причина`, (reason) => {
+      callTransition("postpone", id, reason).then(loadRequests);
+    });
+  } else if (action === "cancel") {
+    openReasonModal(`Отменить заявку #${id} — причина`, (reason) => {
+      callTransition("cancel", id, reason).then(loadRequests);
+    });
+  }
+});
+
+const TRANSITIONS = {
+  "new->progress": { action: "take" },
+  "progress->done": { action: "complete" },
+  "progress->postponed": { action: "postpone", needsReason: true },
+  "progress->cancelled": { action: "cancel", needsReason: true },
+  "postponed->progress": { action: "resume" },
+  "postponed->cancelled": { action: "cancel", needsReason: true },
+};
+
+function attachSortable(el) {
+  Sortable.create(el, {
+    group: "requests",
+    animation: 150,
+    onStart: () => { isDragging = true; },
+    onEnd: async (evt) => {
+      isDragging = false;
+      const fromStatus = evt.from.closest(".column").dataset.status;
+      const toStatus = evt.to.closest(".column").dataset.status;
+      const id = evt.item.dataset.id;
+
+      if (fromStatus === toStatus) {
+        return;
+      }
+
+      const transition = TRANSITIONS[`${fromStatus}->${toStatus}`];
+
+      if (!transition) {
