@@ -70,7 +70,7 @@ def build_request_text(request_id):
     if not row:
         return ""
 
-    id_, user_id, restaurant, request_text, status, operator_name, rating, name, phone = row
+    id_, user_id, restaurant, request_text, status, operator_name, rating, name, phone, reason = row
 
     lines = [f"📌 Заявка #{id_}"]
     if name:
@@ -81,7 +81,18 @@ def build_request_text(request_id):
     lines.append("")
     lines.append(f"📝 Описание:\n{request_text}")
 
+    if status in ("Отложена", "Отменена") and reason:
+        lines.append(f"\n📝 Причина: {reason}")
+
     return "\n".join(lines)
+
+
+def _can_manage(current_operator, operator_id, operator_name):
+    """Разрешено только тому оператору, кто взял заявку, либо админу."""
+    from config import ADMIN_IDS
+    if operator_id in ADMIN_IDS:
+        return True
+    return current_operator == operator_name
 
 
 # =========================
@@ -95,6 +106,10 @@ def update_operator_message(bot, request_id, original_text, status, operator_nam
         status_bar = "🔴 Ожидает · ⬜ В процессе · ⬜ Выполнено"
     elif status == "Заявка в процессе":
         status_bar = "✅ Ожидает · 🟡 В процессе · ⬜ Выполнено"
+    elif status == "Отложена":
+        status_bar = "⏸ Отложена"
+    elif status == "Отменена":
+        status_bar = "🚫 Отменена"
     else:
         status_bar = "✅ Ожидает · ✅ В процессе · 🟢 Выполнено"
 
@@ -226,7 +241,7 @@ def complete_request(bot, request_id, operator_id, operator_name):
     if status == "Заявка отправлена":
         return False, "Сначала возьмите заявку в работу"
 
-    if current_operator and current_operator != operator_name:
+    if current_operator and not _can_manage(current_operator, operator_id, operator_name):
         return False, f"Заявка закреплена за {current_operator}"
 
     cursor.execute("UPDATE requests SET status = 'Выполнено' WHERE id = ?", (request_id,))
@@ -259,6 +274,135 @@ def complete_request(bot, request_id, operator_id, operator_name):
 
     logger.info(f"Заявка #{request_id} выполнена оператором {current_operator}")
     return True, f"Заявка #{request_id} выполнена"
+
+
+# =========================
+# ОТЛОЖИТЬ ЗАЯВКУ (временно, можно возобновить)
+# =========================
+def postpone_request(bot, request_id, operator_id, operator_name, reason=""):
+    """Возвращает (ok: bool, message: str)"""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT status, operator_name FROM requests WHERE id = ?", (request_id,))
+    result = cursor.fetchone()
+
+    if not result:
+        return False, "Заявка не найдена"
+
+    status, current_operator = result
+
+    if status != "Заявка в процессе":
+        return False, "Отложить можно только заявку, которая уже в работе"
+
+    if not _can_manage(current_operator, operator_id, operator_name):
+        return False, f"Заявка закреплена за {current_operator}"
+
+    cursor.execute("UPDATE requests SET status = 'Отложена', reason = ? WHERE id = ?", (reason, request_id))
+    conn.commit()
+
+    base_text = build_request_text(request_id)
+    update_operator_message(bot, request_id, base_text, "Отложена", current_operator)
+
+    cursor.execute("SELECT user_id FROM requests WHERE id = ?", (request_id,))
+    user_id = cursor.fetchone()[0]
+    try:
+        text = f"⏸ Заявка #{request_id} временно отложена."
+        if reason:
+            text += f"\n\nПричина: {reason}"
+        bot.send_message(user_id, text)
+    except Exception as e:
+        logger.error(f"Ошибка уведомления пользователя: {e}")
+
+    logger.info(f"Заявка #{request_id} отложена оператором {operator_name}")
+    return True, f"Заявка #{request_id} отложена"
+
+
+# =========================
+# ВОЗОБНОВИТЬ ОТЛОЖЕННУЮ ЗАЯВКУ
+# =========================
+def resume_request(bot, request_id, operator_id, operator_name):
+    """Возвращает (ok: bool, message: str)"""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT status, operator_name FROM requests WHERE id = ?", (request_id,))
+    result = cursor.fetchone()
+
+    if not result:
+        return False, "Заявка не найдена"
+
+    status, current_operator = result
+
+    if status != "Отложена":
+        return False, "Заявка не отложена"
+
+    if not _can_manage(current_operator, operator_id, operator_name):
+        return False, f"Заявка закреплена за {current_operator}"
+
+    cursor.execute("UPDATE requests SET status = 'Заявка в процессе' WHERE id = ?", (request_id,))
+    conn.commit()
+
+    base_text = build_request_text(request_id)
+    update_operator_message(bot, request_id, base_text, "Заявка в процессе", current_operator)
+
+    cursor.execute("SELECT user_id FROM requests WHERE id = ?", (request_id,))
+    user_id = cursor.fetchone()[0]
+    try:
+        bot.send_message(user_id, f"▶️ Заявка #{request_id} снова в работе.")
+    except Exception as e:
+        logger.error(f"Ошибка уведомления пользователя: {e}")
+
+    logger.info(f"Заявка #{request_id} возобновлена оператором {operator_name}")
+    return True, f"Заявка #{request_id} возобновлена"
+
+
+# =========================
+# ОТМЕНИТЬ ЗАЯВКУ (навсегда, с причиной)
+# =========================
+def cancel_request(bot, request_id, operator_id, operator_name, reason=""):
+    """Возвращает (ok: bool, message: str)"""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT status, operator_name FROM requests WHERE id = ?", (request_id,))
+    result = cursor.fetchone()
+
+    if not result:
+        return False, "Заявка не найдена"
+
+    status, current_operator = result
+
+    if status in ("Выполнено", "Отменена"):
+        return False, "Заявка уже закрыта"
+
+    if status == "Заявка отправлена":
+        return False, "Сначала возьмите заявку в работу"
+
+    if not _can_manage(current_operator, operator_id, operator_name):
+        return False, f"Заявка закреплена за {current_operator}"
+
+    cursor.execute("UPDATE requests SET status = 'Отменена', reason = ? WHERE id = ?", (reason, request_id))
+    conn.commit()
+
+    from database import close_chat
+    close_chat(request_id)
+
+    cursor.execute("SELECT user_id FROM requests WHERE id = ?", (request_id,))
+    user_id = cursor.fetchone()[0]
+    try:
+        text = f"🚫 Заявка #{request_id} отменена."
+        if reason:
+            text += f"\n\nПричина: {reason}"
+        bot.send_message(user_id, text)
+    except Exception as e:
+        logger.error(f"Ошибка уведомления пользователя: {e}")
+
+    base_text = build_request_text(request_id)
+    update_operator_message(bot, request_id, base_text, "Отменена", current_operator)
+
+    logger.info(f"Заявка #{request_id} отменена оператором {operator_name}")
+    return True, f"Заявка #{request_id} отменена"
 
 
 # =========================
@@ -359,42 +503,6 @@ def register_operator_handlers(bot):
 
         bot.send_message(message.chat.id, text)
 
-    @bot.message_handler(func=lambda message: (message.text or "") == "📊 Статистика" and message.from_user.id in OPERATOR_IDS)
-    def btn_stats(message):
-        from database import get_operator_stats
-        operator_name = message.from_user.first_name
-        total, done, ratings = get_operator_stats(operator_name)
-        rating_text = ""
-        for rating, count in ratings:
-            rating_text += f"  {rating}: {count}\n"
-        text = f"""📊 Статистика оператора {operator_name}
-
-📋 Всего взято заявок: {total}
-✅ Выполнено: {done}
-🔄 В работе: {total - done}
-
-⭐ Оценки:
-{rating_text if rating_text else "  Нет оценок"}"""
-        bot.send_message(message.chat.id, text)
-
-    @bot.message_handler(func=lambda message: (message.text or "") == "📋 Активные заявки" and message.from_user.id in OPERATOR_IDS)
-    def btn_active(message):
-        from database import get_active_requests
-        rows = get_active_requests()
-        if not rows:
-            bot.send_message(message.chat.id, "Нет активных заявок ✅")
-            return
-        text = "📋 Активные заявки:\n\n"
-        for row in rows:
-            request_id, restaurant, status, operator_name = row
-            text += f"📌 Заявка #{request_id}\n"
-            text += f"🏪 Ресторан: {restaurant}\n"
-            text += f"📊 Статус: {status}\n"
-            if operator_name:
-                text += f"👨‍💼 Оператор: {operator_name}\n"
-            text += "\n"
-        bot.send_message(message.chat.id, text)
-
     # =========================
     # 🗂 ДОСКА ЗАЯВОК (Mini App)
     # =========================
@@ -461,7 +569,7 @@ def register_operator_handlers(bot):
     # =========================
     # CHAT: OPERATOR → USER
     # =========================
-    ADMIN_BUTTONS = ["📊 Статистика операторов", "📥 Экспорт заявок в Excel", "📋 Активные заявки", "🗂 Доска заявок"]
+    ADMIN_BUTTONS = ["🗂 Доска заявок"]
 
     @bot.message_handler(func=lambda message: message.from_user.id in OPERATOR_IDS and not (message.text or "").startswith("/") and message.text not in ADMIN_BUTTONS)
     def operator_message(message):
