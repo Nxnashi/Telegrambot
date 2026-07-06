@@ -404,6 +404,50 @@ def cancel_request(bot, request_id, operator_id, operator_name, reason=""):
     logger.info(f"Заявка #{request_id} отменена оператором {operator_name}")
     return True, f"Заявка #{request_id} отменена"
 
+# =========================
+# ВЕРНУТЬ ОТМЕНЁННУЮ ЗАЯВКУ (если отменили по ошибке)
+# =========================
+def restore_request(bot, request_id, operator_id, operator_name):
+    """Возвращает (ok: bool, message: str)"""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT status, operator_name FROM requests WHERE id = ?", (request_id,))
+    result = cursor.fetchone()
+
+    if not result:
+        return False, "Заявка не найдена"
+
+    status, current_operator = result
+
+    if status != "Отменена":
+        return False, "Заявка не отменена"
+
+    if not _can_manage(current_operator, operator_id, operator_name):
+        return False, f"Заявка закреплена за {current_operator}"
+
+    cursor.execute(
+        "UPDATE requests SET status = 'Заявка в процессе', reason = NULL WHERE id = ?",
+        (request_id,)
+    )
+    conn.commit()
+
+    from database import open_chat
+    cursor.execute("SELECT user_id FROM requests WHERE id = ?", (request_id,))
+    user_id = cursor.fetchone()[0]
+    open_chat(request_id, user_id, operator_id)
+
+    base_text = build_request_text(request_id)
+    update_operator_message(bot, request_id, base_text, "Заявка в процессе", current_operator)
+
+    try:
+        bot.send_message(user_id, f"↩️ Заявка #{request_id} возвращена в работу — отмена была ошибкой.")
+    except Exception as e:
+        logger.error(f"Ошибка уведомления пользователя: {e}")
+
+    logger.info(f"Заявка #{request_id} восстановлена оператором {operator_name}")
+    return True, f"Заявка #{request_id} возвращена в работу"
+
 
 # =========================
 # BAD REVIEW
