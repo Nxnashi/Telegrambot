@@ -246,3 +246,102 @@ function attachSortable(el) {
       const transition = TRANSITIONS[`${fromStatus}->${toStatus}`];
 
       if (!transition) {
+        showToast("Такой переход недоступен");
+        loadRequests();
+        return;
+      }
+
+      if (transition.needsReason) {
+        openReasonModal(`Заявка #${id} — причина`, async (reason) => {
+          await callTransition(transition.action, id, reason);
+          loadRequests();
+        });
+      } else {
+        await callTransition(transition.action, id);
+        loadRequests();
+      }
+    }
+  });
+}
+
+async function loadStats() {
+  const res = await fetch(`/api/dashboard/stats?initData=${encodeURIComponent(initData)}`);
+  const data = await res.json();
+  if (!data.ok) return;
+
+  statsTable.innerHTML = data.items.map((op) => `
+    <div class="stats-card">
+      <b>👨‍💼 ${escapeHtml(op.operator_name)}</b>
+      <div class="stats-row"><span>Всего</span><span>${op.total}</span></div>
+      <div class="stats-row"><span>Выполнено</span><span>${op.done}</span></div>
+      <div class="stats-row"><span>⭐⭐⭐ Отлично</span><span>${op.great}</span></div>
+      <div class="stats-row"><span>⭐⭐ Нормально</span><span>${op.ok}</span></div>
+      <div class="stats-row"><span>⭐ Плохо</span><span>${op.bad}</span></div>
+    </div>
+  `).join("") || `<p style="color:var(--hint)">Нет данных</p>`;
+}
+
+if (tabs) {
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+    btn.classList.add("active");
+
+    if (btn.dataset.tab === "board") {
+      boardView.hidden = false;
+      statsView.hidden = true;
+      loadRequests();
+    } else {
+      boardView.hidden = true;
+      statsView.hidden = false;
+      loadStats();
+    }
+  });
+}
+
+if (exportBtn) {
+  exportBtn.addEventListener("click", () => {
+    window.open(`/api/dashboard/export?initData=${encodeURIComponent(initData)}`, "_blank");
+  });
+}
+
+async function init() {
+  [listNew, listProgress, listPostponed, listDone, listCancelled].forEach((el) => {
+    if (!el) {
+      console.error("dashboard: не найден один из списков-колонок на странице");
+      return;
+    }
+    try {
+      attachSortable(el);
+    } catch (e) {
+      console.error("dashboard attachSortable error:", e);
+    }
+  });
+
+  try {
+    const res = await fetch(`/api/dashboard/me?initData=${encodeURIComponent(initData)}`);
+    const data = await res.json();
+    if (!data.ok) {
+      document.body.innerHTML = "<p style='padding:20px;text-align:center;color:var(--hint)'>Доступ только для операторов</p>";
+      return;
+    }
+    isAdmin = data.is_admin;
+    if (tabs) tabs.hidden = !isAdmin;
+  } catch (e) {
+    console.error("dashboard /me error:", e);
+    // если /me не ответил — всё равно пробуем показать доску
+  }
+
+  try {
+    await loadRequests();
+  } catch (e) {
+    console.error("dashboard loadRequests error:", e);
+  }
+
+  setInterval(() => {
+    if (!isDragging && boardView.hidden === false) loadRequests();
+  }, 8000);
+}
+
+init().catch((e) => console.error("dashboard init error:", e));
