@@ -11,6 +11,7 @@ from handlers.user_handlers import register_user_handlers
 from handlers.operator_handlers import register_operator_handlers
 from handlers.admin_handlers import register_admin_handlers
 from webapp import register_webapp
+from dashboard import register_dashboard
 
 # =========================
 # LOGGING
@@ -47,6 +48,7 @@ register_user_handlers(bot)
 register_operator_handlers(bot)
 register_admin_handlers(bot)
 register_webapp(app, bot)
+register_dashboard(app, bot)
 
 # =========================
 # WEBHOOK ROUTE
