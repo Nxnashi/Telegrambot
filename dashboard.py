@@ -7,7 +7,7 @@ from flask import request, jsonify, send_from_directory, send_file
 from config import TOKEN, OPERATOR_IDS, ADMIN_IDS
 from webapp import validate_init_data
 from database import get_dashboard_requests, get_all_operators_stats, get_all_requests
-from handlers.operator_handlers import take_request, complete_request, postpone_request, resume_request, cancel_request
+from handlers.operator_handlers import take_request, complete_request, postpone_request, resume_request, cancel_request, restore_request
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,21 @@ def register_dashboard(app, bot):
         reason = request.form.get("reason", "")
         operator_name = user.get("first_name", "Оператор")
         ok, message = cancel_request(bot, request_id, user["id"], operator_name, reason)
+        return jsonify(ok=ok, message=message)
+
+    # =========================
+    # ВЕРНУТЬ ОТМЕНЁННУЮ ЗАЯВКУ
+    # =========================
+    @app.route("/api/dashboard/restore", methods=["POST"])
+    def api_restore():
+        init_data = request.form.get("initData", "")
+        user = _check_operator(init_data)
+        if not user:
+            return jsonify(ok=False, error="forbidden"), 403
+
+        request_id = request.form.get("request_id")
+        operator_name = user.get("first_name", "Оператор")
+        ok, message = restore_request(bot, request_id, user["id"], operator_name)
         return jsonify(ok=ok, message=message)
 
     # =========================
