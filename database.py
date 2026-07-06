@@ -58,6 +58,14 @@ def create_tables():
 
     conn.commit()
 
+    # Миграция: добавляем колонку reason (причина отмены/отсрочки),
+    # если её ещё нет (для баз, созданных до этого обновления)
+    cursor.execute("PRAGMA table_info(requests)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "reason" not in columns:
+        cursor.execute("ALTER TABLE requests ADD COLUMN reason TEXT")
+        conn.commit()
+
 
 def add_user(telegram_id, name, phone):
     conn = get_conn()
@@ -220,7 +228,7 @@ def get_active_requests():
         status,
         operator_name
     FROM requests
-    WHERE status != 'Выполнено'
+    WHERE status NOT IN ('Выполнено', 'Отменена')
     ORDER BY id DESC
     """)
 
@@ -260,7 +268,8 @@ def get_all_requests():
         request_text,
         status,
         operator_name,
-        rating
+        rating,
+        reason
     FROM requests
     ORDER BY id DESC
     """)
@@ -276,7 +285,7 @@ def get_request_by_id(request_id):
     SELECT
         r.id, r.user_id, r.restaurant_name, r.request_text,
         r.status, r.operator_name, r.rating,
-        u.name, u.phone
+        u.name, u.phone, r.reason
     FROM requests r
     LEFT JOIN users u ON u.telegram_id = r.user_id
     WHERE r.id = ?
@@ -292,15 +301,15 @@ def get_dashboard_requests(done_limit=20):
     base_select = """
     SELECT
         r.id, r.restaurant_name, r.status, r.operator_name,
-        r.request_text, r.rating, u.name, u.phone
+        r.request_text, r.rating, u.name, u.phone, r.reason
     FROM requests r
     LEFT JOIN users u ON u.telegram_id = r.user_id
     """
 
-    cursor.execute(base_select + "WHERE r.status != 'Выполнено' ORDER BY r.id DESC")
+    cursor.execute(base_select + "WHERE r.status NOT IN ('Выполнено', 'Отменена') ORDER BY r.id DESC")
     active = cursor.fetchall()
 
-    cursor.execute(base_select + "WHERE r.status = 'Выполнено' ORDER BY r.id DESC LIMIT ?", (done_limit,))
+    cursor.execute(base_select + "WHERE r.status IN ('Выполнено', 'Отменена') ORDER BY r.id DESC LIMIT ?", (done_limit,))
     done = cursor.fetchall()
 
     return active + done
