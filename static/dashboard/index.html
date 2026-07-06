@@ -26,15 +26,36 @@
       <div class="list" id="listProgress"></div>
     </div>
 
+    <div class="column" data-status="postponed">
+      <div class="column-header">🟠 Отложены <span class="count" id="countPostponed">0</span></div>
+      <div class="list" id="listPostponed"></div>
+    </div>
+
     <div class="column" data-status="done">
       <div class="column-header">🟢 Выполнено <span class="count" id="countDone">0</span></div>
       <div class="list" id="listDone"></div>
+    </div>
+
+    <div class="column" data-status="cancelled">
+      <div class="column-header">⚫ Отменены <span class="count" id="countCancelled">0</span></div>
+      <div class="list" id="listCancelled"></div>
     </div>
   </div>
 
   <div id="statsView" hidden>
     <button class="export-btn" id="exportBtn">📥 Скачать Excel</button>
     <div id="statsTable"></div>
+  </div>
+
+  <div id="reasonOverlay" class="overlay" hidden>
+    <div class="modal">
+      <div class="modal-title" id="modalTitle">Причина</div>
+      <textarea id="modalReason" rows="3" placeholder="Можно оставить пустым"></textarea>
+      <div class="modal-actions">
+        <button id="modalCancelBtn" class="modal-btn secondary">Отмена</button>
+        <button id="modalConfirmBtn" class="modal-btn primary">Подтвердить</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
