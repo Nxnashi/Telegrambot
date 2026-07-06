@@ -99,6 +99,11 @@ function renderCard(item, column) {
         <button class="action-btn" data-action="resume" data-id="${item.id}">▶️ Возобновить</button>
         <button class="action-btn" data-action="cancel" data-id="${item.id}">🚫 Отменить</button>
       </div>`;
+  } else if (column === "cancelled") {
+    actions = `
+      <div class="card-actions">
+        <button class="action-btn" data-action="restore" data-id="${item.id}">↩️ Вернуть</button>
+      </div>`;
   }
 
   const showReason = (item.status === "Отменена" || item.status === "Отложена") && item.reason;
@@ -208,6 +213,8 @@ document.addEventListener("click", (e) => {
 
   if (action === "resume") {
     callTransition("resume", id).then(loadRequests);
+  } else if (action === "restore") {
+    callTransition("restore", id).then(loadRequests);
   } else if (action === "postpone") {
     openReasonModal(`Отложить заявку #${id} — причина`, (reason) => {
       callTransition("postpone", id, reason).then(loadRequests);
@@ -226,6 +233,7 @@ const TRANSITIONS = {
   "progress->cancelled": { action: "cancel", needsReason: true },
   "postponed->progress": { action: "resume" },
   "postponed->cancelled": { action: "cancel", needsReason: true },
+  "cancelled->progress": { action: "restore" },
 };
 
 function attachSortable(el) {
