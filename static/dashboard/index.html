@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Доска заявок</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<link rel="stylesheet" href="/dashboard/dashboard.css">
+</head>
+<body>
+
+  <div class="tabs" id="tabs" hidden>
+    <button class="tab active" data-tab="board">🗂 Доска</button>
+    <button class="tab" data-tab="stats">📊 Статистика</button>
+  </div>
+
+  <div id="boardView">
+    <div class="column" data-status="new">
+      <div class="column-header">🔴 Новые <span class="count" id="countNew">0</span></div>
+      <div class="list" id="listNew"></div>
+    </div>
+
+    <div class="column" data-status="progress">
+      <div class="column-header">🟡 В процессе <span class="count" id="countProgress">0</span></div>
+      <div class="list" id="listProgress"></div>
+    </div>
+
+    <div class="column" data-status="done">
+      <div class="column-header">🟢 Выполнено <span class="count" id="countDone">0</span></div>
+      <div class="list" id="listDone"></div>
+    </div>
+  </div>
+
+  <div id="statsView" hidden>
+    <button class="export-btn" id="exportBtn">📥 Скачать Excel</button>
+    <div id="statsTable"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/dashboard/dashboard.js"></script>
+</body>
+</html>
