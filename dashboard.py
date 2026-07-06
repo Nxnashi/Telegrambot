@@ -7,7 +7,7 @@ from flask import request, jsonify, send_from_directory, send_file
 from config import TOKEN, OPERATOR_IDS, ADMIN_IDS
 from webapp import validate_init_data
 from database import get_dashboard_requests, get_all_operators_stats, get_all_requests
-from handlers.operator_handlers import take_request, complete_request
+from handlers.operator_handlers import take_request, complete_request, postpone_request, resume_request, cancel_request
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,9 @@ def register_dashboard(app, bot):
     def dashboard_static(filename):
         return send_from_directory(DASHBOARD_DIR, filename)
 
+    # =========================
+    # КТО Я (оператор / админ)
+    # =========================
     @app.route("/api/dashboard/me")
     def api_me():
         init_data = request.args.get("initData", "")
@@ -48,6 +51,9 @@ def register_dashboard(app, bot):
             is_admin=user.get("id") in ADMIN_IDS
         )
 
+    # =========================
+    # СПИСОК ЗАЯВОК ДЛЯ ДОСКИ
+    # =========================
     @app.route("/api/dashboard/requests")
     def api_requests():
         init_data = request.args.get("initData", "")
@@ -66,11 +72,62 @@ def register_dashboard(app, bot):
                 "rating": r[5],
                 "name": r[6],
                 "phone": r[7],
+                "reason": r[8],
             }
             for r in rows
         ]
         return jsonify(ok=True, items=items)
 
+    # =========================
+    # ОТЛОЖИТЬ ЗАЯВКУ
+    # =========================
+    @app.route("/api/dashboard/postpone", methods=["POST"])
+    def api_postpone():
+        init_data = request.form.get("initData", "")
+        user = _check_operator(init_data)
+        if not user:
+            return jsonify(ok=False, error="forbidden"), 403
+
+        request_id = request.form.get("request_id")
+        reason = request.form.get("reason", "")
+        operator_name = user.get("first_name", "Оператор")
+        ok, message = postpone_request(bot, request_id, user["id"], operator_name, reason)
+        return jsonify(ok=ok, message=message)
+
+    # =========================
+    # ВОЗОБНОВИТЬ ЗАЯВКУ
+    # =========================
+    @app.route("/api/dashboard/resume", methods=["POST"])
+    def api_resume():
+        init_data = request.form.get("initData", "")
+        user = _check_operator(init_data)
+        if not user:
+            return jsonify(ok=False, error="forbidden"), 403
+
+        request_id = request.form.get("request_id")
+        operator_name = user.get("first_name", "Оператор")
+        ok, message = resume_request(bot, request_id, user["id"], operator_name)
+        return jsonify(ok=ok, message=message)
+
+    # =========================
+    # ОТМЕНИТЬ ЗАЯВКУ
+    # =========================
+    @app.route("/api/dashboard/cancel", methods=["POST"])
+    def api_cancel():
+        init_data = request.form.get("initData", "")
+        user = _check_operator(init_data)
+        if not user:
+            return jsonify(ok=False, error="forbidden"), 403
+
+        request_id = request.form.get("request_id")
+        reason = request.form.get("reason", "")
+        operator_name = user.get("first_name", "Оператор")
+        ok, message = cancel_request(bot, request_id, user["id"], operator_name, reason)
+        return jsonify(ok=ok, message=message)
+
+    # =========================
+    # ВЗЯТЬ ЗАЯВКУ (перетащили в "В процессе")
+    # =========================
     @app.route("/api/dashboard/take", methods=["POST"])
     def api_take():
         init_data = request.form.get("initData", "")
@@ -83,6 +140,9 @@ def register_dashboard(app, bot):
         ok, message = take_request(bot, request_id, user["id"], operator_name)
         return jsonify(ok=ok, message=message)
 
+    # =========================
+    # ЗАВЕРШИТЬ ЗАЯВКУ (перетащили в "Выполнено")
+    # =========================
     @app.route("/api/dashboard/complete", methods=["POST"])
     def api_complete():
         init_data = request.form.get("initData", "")
@@ -95,6 +155,9 @@ def register_dashboard(app, bot):
         ok, message = complete_request(bot, request_id, user["id"], operator_name)
         return jsonify(ok=ok, message=message)
 
+    # =========================
+    # СТАТИСТИКА (только админ)
+    # =========================
     @app.route("/api/dashboard/stats")
     def api_stats():
         init_data = request.args.get("initData", "")
@@ -116,6 +179,9 @@ def register_dashboard(app, bot):
         ]
         return jsonify(ok=True, items=items)
 
+    # =========================
+    # ЭКСПОРТ В EXCEL (только админ)
+    # =========================
     @app.route("/api/dashboard/export")
     def api_export():
         init_data = request.args.get("initData", "")
@@ -132,7 +198,7 @@ def register_dashboard(app, bot):
         ws = wb.active
         ws.title = "Заявки"
 
-        headers = ["ID", "User ID", "Ресторан", "Описание", "Статус", "Оператор", "Оценка"]
+        headers = ["ID", "User ID", "Ресторан", "Описание", "Статус", "Оператор", "Оценка", "Причина"]
         header_fill = PatternFill("solid", fgColor="4F81BD")
         header_font = Font(bold=True, color="FFFFFF")
 
@@ -146,7 +212,7 @@ def register_dashboard(app, bot):
             for col_idx, value in enumerate(row, 1):
                 ws.cell(row=row_idx, column=col_idx, value=value).alignment = Alignment(wrap_text=True)
 
-        column_widths = [6, 14, 20, 40, 20, 15, 12]
+        column_widths = [6, 14, 20, 40, 20, 15, 12, 30]
         for col, width in enumerate(column_widths, 1):
             ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width
 
