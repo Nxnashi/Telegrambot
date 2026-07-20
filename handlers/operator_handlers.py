@@ -1,11 +1,17 @@
 import logging
 from telebot import types
-from database import get_conn, get_request_by_id
+from database import get_conn, get_request_by_id, log_event
 from config import OPERATOR_IDS
 
 logger = logging.getLogger(__name__)
 
 user_data = {}
+
+# operator_id -> request_id, "текущий" диалог оператора при нескольких активных
+operator_focus = {}
+
+# operator_id -> Message, отложенное сообщение, ждём выбора адресата кнопками
+pending_operator_messages = {}
 
 
 # =========================
@@ -173,10 +179,11 @@ def take_request(bot, request_id, operator_id, operator_name):
         return False, "Заявка уже выполнена"
 
     cursor.execute(
-        "UPDATE requests SET status = 'Заявка в процессе', operator_name = ? WHERE id = ?",
+        "UPDATE requests SET status = 'Заявка в процессе', operator_name = ?, updated_at = datetime('now') WHERE id = ?",
         (operator_name, request_id)
     )
     conn.commit()
+    log_event(request_id, "take", operator_name)
 
     base_text = build_request_text(request_id)
     update_operator_message(bot, request_id, base_text, "Заявка в процессе", operator_name)
@@ -193,15 +200,24 @@ def take_request(bot, request_id, operator_id, operator_name):
         except Exception as e:
             logger.error(f"Ошибка редактирования кнопок: {e}")
 
-    from database import open_chat
+    from database import open_chat, get_chats_by_operator
     cursor.execute("SELECT user_id FROM requests WHERE id = ?", (request_id,))
     user_id = cursor.fetchone()[0]
     open_chat(request_id, user_id, operator_id)
 
+    active_chats_count = len(get_chats_by_operator(operator_id))
+    extra_note = ""
+    if active_chats_count > 1:
+        extra_note = (
+            f"\n\n⚠️ У вас сейчас {active_chats_count} активных диалога(ов). "
+            "Чтобы бот понял, кому именно вы отвечаете — отвечайте (свайп/reply) прямо "
+            "на сообщение конкретной заявки. Если это будет неочевидно, бот сам спросит."
+        )
+
     try:
         bot.send_message(
             operator_id,
-            f"✅ Вы взяли заявку #{request_id}\n\n💬 Чат с пользователем открыт. Просто пишите сообщения."
+            f"✅ Вы взяли заявку #{request_id}\n\n💬 Чат с пользователем открыт. Просто пишите сообщения.{extra_note}"
         )
     except Exception as e:
         logger.error(f"Ошибка уведомления оператора: {e}")
@@ -244,8 +260,9 @@ def complete_request(bot, request_id, operator_id, operator_name):
     if current_operator and not _can_manage(current_operator, operator_id, operator_name):
         return False, f"Заявка закреплена за {current_operator}"
 
-    cursor.execute("UPDATE requests SET status = 'Выполнено' WHERE id = ?", (request_id,))
+    cursor.execute("UPDATE requests SET status = 'Выполнено', updated_at = datetime('now') WHERE id = ?", (request_id,))
     conn.commit()
+    log_event(request_id, "complete", operator_name)
 
     from database import close_chat
     close_chat(request_id)
@@ -298,8 +315,12 @@ def postpone_request(bot, request_id, operator_id, operator_name, reason=""):
     if not _can_manage(current_operator, operator_id, operator_name):
         return False, f"Заявка закреплена за {current_operator}"
 
-    cursor.execute("UPDATE requests SET status = 'Отложена', reason = ? WHERE id = ?", (reason, request_id))
+    cursor.execute(
+        "UPDATE requests SET status = 'Отложена', reason = ?, updated_at = datetime('now') WHERE id = ?",
+        (reason, request_id)
+    )
     conn.commit()
+    log_event(request_id, "postpone", operator_name, reason)
 
     base_text = build_request_text(request_id)
     update_operator_message(bot, request_id, base_text, "Отложена", current_operator)
@@ -340,8 +361,9 @@ def resume_request(bot, request_id, operator_id, operator_name):
     if not _can_manage(current_operator, operator_id, operator_name):
         return False, f"Заявка закреплена за {current_operator}"
 
-    cursor.execute("UPDATE requests SET status = 'Заявка в процессе' WHERE id = ?", (request_id,))
+    cursor.execute("UPDATE requests SET status = 'Заявка в процессе', updated_at = datetime('now') WHERE id = ?", (request_id,))
     conn.commit()
+    log_event(request_id, "resume", operator_name)
 
     base_text = build_request_text(request_id)
     update_operator_message(bot, request_id, base_text, "Заявка в процессе", current_operator)
@@ -382,8 +404,12 @@ def cancel_request(bot, request_id, operator_id, operator_name, reason=""):
     if not _can_manage(current_operator, operator_id, operator_name):
         return False, f"Заявка закреплена за {current_operator}"
 
-    cursor.execute("UPDATE requests SET status = 'Отменена', reason = ? WHERE id = ?", (reason, request_id))
+    cursor.execute(
+        "UPDATE requests SET status = 'Отменена', reason = ?, updated_at = datetime('now') WHERE id = ?",
+        (reason, request_id)
+    )
     conn.commit()
+    log_event(request_id, "cancel", operator_name, reason)
 
     from database import close_chat
     close_chat(request_id)
@@ -403,6 +429,7 @@ def cancel_request(bot, request_id, operator_id, operator_name, reason=""):
 
     logger.info(f"Заявка #{request_id} отменена оператором {operator_name}")
     return True, f"Заявка #{request_id} отменена"
+
 
 # =========================
 # ВЕРНУТЬ ОТМЕНЁННУЮ ЗАЯВКУ (если отменили по ошибке)
@@ -427,10 +454,11 @@ def restore_request(bot, request_id, operator_id, operator_name):
         return False, f"Заявка закреплена за {current_operator}"
 
     cursor.execute(
-        "UPDATE requests SET status = 'Заявка в процессе', reason = NULL WHERE id = ?",
+        "UPDATE requests SET status = 'Заявка в процессе', reason = NULL, updated_at = datetime('now') WHERE id = ?",
         (request_id,)
     )
     conn.commit()
+    log_event(request_id, "restore", operator_name)
 
     from database import open_chat
     cursor.execute("SELECT user_id FROM requests WHERE id = ?", (request_id,))
@@ -471,6 +499,7 @@ def send_final_review(bot, request_id, rating, reason, chat_id):
 
     cursor.execute("UPDATE requests SET rating = ? WHERE id = ?", (rating, request_id))
     conn.commit()
+    log_event(request_id, "rate", None, f"{rating}" + (f" — {reason}" if reason else ""))
 
     bot.send_message(chat_id, "Спасибо за ваш отзыв 🙏")
 
@@ -610,6 +639,38 @@ def register_operator_handlers(bot):
                     None, chat_id
                 )
 
+        # =========================
+        # 🎯 ВЫБОР АДРЕСАТА (когда несколько активных диалогов)
+        # =========================
+        elif data.startswith("pickchat_"):
+            from database import get_chats_by_operator
+
+            operator_id = call.from_user.id
+            request_id = int(data.split("_")[1])
+
+            bot.answer_callback_query(call.id)
+
+            try:
+                bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+            except Exception as e:
+                logger.error(f"Ошибка удаления кнопок выбора адресата: {e}")
+
+            pending = pending_operator_messages.pop(operator_id, None)
+            if not pending:
+                bot.send_message(call.message.chat.id, "Сообщение не найдено, отправьте его ещё раз.")
+                return
+
+            chats = get_chats_by_operator(operator_id)
+            match = next((c for c in chats if c[0] == request_id), None)
+
+            if not match:
+                bot.send_message(call.message.chat.id, "Этот диалог уже закрыт.")
+                return
+
+            _, user_id, restaurant = match
+            operator_focus[operator_id] = request_id
+            _forward_to_user(bot, pending, user_id, request_id)
+
     # =========================
     # CHAT: OPERATOR → USER
     # =========================
@@ -617,15 +678,65 @@ def register_operator_handlers(bot):
 
     @bot.message_handler(func=lambda message: message.from_user.id in OPERATOR_IDS and not (message.text or "").startswith("/") and message.text not in ADMIN_BUTTONS)
     def operator_message(message):
-        from database import get_chat_by_operator
-        chat = get_chat_by_operator(message.from_user.id)
+        from database import get_chats_by_operator, get_request_id_by_operator_message
 
-        if not chat:
+        operator_id = message.from_user.id
+        chats = get_chats_by_operator(operator_id)
+
+        if not chats:
             return
 
-        user_id = chat[1]
-        operator_name = message.from_user.first_name
-        try:
-            bot.send_message(user_id, f"💬 Оператор {operator_name}:\n{message.text}")
-        except Exception as e:
-            logger.error(f"Ошибка пересылки сообщения пользователю {user_id}: {e}")
+        # Один активный диалог — как и раньше, без лишних вопросов
+        if len(chats) == 1:
+            request_id, user_id, restaurant = chats[0]
+            operator_focus[operator_id] = request_id
+            _forward_to_user(bot, message, user_id, request_id)
+            return
+
+        # Несколько активных диалогов — пытаемся понять, к какому относится сообщение
+        target_request_id = None
+
+        if message.reply_to_message:
+            target_request_id = get_request_id_by_operator_message(
+                operator_id, message.reply_to_message.message_id
+            )
+
+        if target_request_id is None:
+            target_request_id = operator_focus.get(operator_id)
+
+        match = next((c for c in chats if c[0] == target_request_id), None)
+
+        if match:
+            request_id, user_id, restaurant = match
+            operator_focus[operator_id] = request_id
+            _forward_to_user(bot, message, user_id, request_id)
+            return
+
+        # Неоднозначно — явно спрашиваем, кому отправить
+        pending_operator_messages[operator_id] = message
+        markup = types.InlineKeyboardMarkup()
+        for request_id, user_id, restaurant in chats:
+            markup.add(types.InlineKeyboardButton(
+                f"📌 Заявка #{request_id} — {restaurant}",
+                callback_data=f"pickchat_{request_id}"
+            ))
+        bot.send_message(
+            message.chat.id,
+            "У вас несколько активных диалогов. Кому отправить это сообщение?\n\n"
+            "Совет: чтобы бот сам понимал адресата — отвечайте (свайп/reply) прямо на сообщение конкретной заявки.",
+            reply_markup=markup
+        )
+
+
+def _forward_to_user(bot, message, user_id, request_id):
+    operator_name = message.from_user.first_name
+    prefix = f"💬 Оператор {operator_name} (заявка #{request_id}):"
+    try:
+        if message.photo:
+            bot.send_photo(user_id, message.photo[-1].file_id, caption=f"{prefix}\n" + (message.caption or ""))
+        elif message.document:
+            bot.send_document(user_id, message.document.file_id, caption=f"{prefix}\n" + (message.caption or ""))
+        else:
+            bot.send_message(user_id, f"{prefix}\n{message.text}")
+    except Exception as e:
+        logger.error(f"Ошибка пересылки сообщения пользователю {user_id}: {e}")

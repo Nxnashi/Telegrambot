@@ -12,6 +12,7 @@ from handlers.operator_handlers import register_operator_handlers
 from handlers.admin_handlers import register_admin_handlers
 from webapp import register_webapp
 from dashboard import register_dashboard
+from reminders import start_scheduler
 
 # =========================
 # LOGGING
@@ -49,6 +50,7 @@ register_operator_handlers(bot)
 register_admin_handlers(bot)
 register_webapp(app, bot)
 register_dashboard(app, bot)
+start_scheduler(bot)
 
 # =========================
 # WEBHOOK ROUTE

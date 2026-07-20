@@ -10,9 +10,10 @@
 </head>
 <body>
 
-  <div class="tabs" id="tabs" hidden>
+  <div class="tabs" id="tabs">
     <button class="tab active" data-tab="board">🗂 Доска</button>
-    <button class="tab" data-tab="stats">📊 Статистика</button>
+    <button class="tab" data-tab="journal">📜 Журнал</button>
+    <button class="tab" id="statsTabBtn" data-tab="stats" hidden>📊 Статистика</button>
   </div>
 
   <div id="boardView">
@@ -40,6 +41,10 @@
       <div class="column-header">⚫ Отменены <span class="count" id="countCancelled">0</span></div>
       <div class="list" id="listCancelled"></div>
     </div>
+  </div>
+
+  <div id="journalView" hidden>
+    <div id="journalList"></div>
   </div>
 
   <div id="statsView" hidden>

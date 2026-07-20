@@ -56,6 +56,17 @@ def create_tables():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS request_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id INTEGER,
+        event_type TEXT,
+        actor_name TEXT,
+        details TEXT,
+        created_at TEXT
+    )
+    """)
+
     conn.commit()
 
     # Миграция: добавляем колонку reason (причина отмены/отсрочки),
@@ -64,6 +75,15 @@ def create_tables():
     columns = [row[1] for row in cursor.fetchall()]
     if "reason" not in columns:
         cursor.execute("ALTER TABLE requests ADD COLUMN reason TEXT")
+        conn.commit()
+    if "created_at" not in columns:
+        cursor.execute("ALTER TABLE requests ADD COLUMN created_at TEXT")
+        conn.commit()
+    if "updated_at" not in columns:
+        cursor.execute("ALTER TABLE requests ADD COLUMN updated_at TEXT")
+        conn.commit()
+    if "reminder_count" not in columns:
+        cursor.execute("ALTER TABLE requests ADD COLUMN reminder_count INTEGER DEFAULT 0")
         conn.commit()
 
 
@@ -89,9 +109,11 @@ def create_request(user_id, restaurant_name, request_text, photo_id):
         restaurant_name,
         request_text,
         photo_id,
-        status
+        status,
+        created_at,
+        updated_at
     )
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     """, (
         user_id,
         restaurant_name,
@@ -103,6 +125,75 @@ def create_request(user_id, restaurant_name, request_text, photo_id):
     conn.commit()
 
     return cursor.lastrowid
+
+
+def get_unclaimed_requests():
+    """
+    Заявки, которые до сих пор никто не взял в работу,
+    с количеством уже отправленных напоминаний и временем ожидания в минутах.
+    """
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        id,
+        restaurant_name,
+        COALESCE(reminder_count, 0),
+        (strftime('%s', 'now') - strftime('%s', created_at)) / 60.0 AS elapsed_min
+    FROM requests
+    WHERE status = 'Заявка отправлена'
+    AND created_at IS NOT NULL
+    """)
+
+    return cursor.fetchall()
+
+
+def bump_reminder(request_id):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE requests SET reminder_count = COALESCE(reminder_count, 0) + 1 WHERE id = ?",
+        (request_id,)
+    )
+
+    conn.commit()
+
+
+def log_event(request_id, event_type, actor_name=None, details=None):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO request_events (request_id, event_type, actor_name, details, created_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+    """, (request_id, event_type, actor_name, details))
+
+    conn.commit()
+
+
+def get_events(limit=200, request_id=None):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    if request_id:
+        cursor.execute("""
+            SELECT id, request_id, event_type, actor_name, details, created_at
+            FROM request_events
+            WHERE request_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+        """, (request_id, limit))
+    else:
+        cursor.execute("""
+            SELECT id, request_id, event_type, actor_name, details, created_at
+            FROM request_events
+            ORDER BY id DESC
+            LIMIT ?
+        """, (limit,))
+
+    return cursor.fetchall()
 
 
 def open_chat(request_id, user_id, operator_id):
@@ -150,17 +241,34 @@ def get_chat_by_user(user_id):
     return cursor.fetchone()
 
 
-def get_chat_by_operator(operator_id):
+def get_chats_by_operator(operator_id):
+    """Все активные диалоги оператора (может быть несколько сразу)."""
     conn = get_conn()
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT request_id, user_id
-    FROM active_chats
-    WHERE operator_id = ?
+    SELECT ac.request_id, ac.user_id, r.restaurant_name
+    FROM active_chats ac
+    LEFT JOIN requests r ON r.id = ac.request_id
+    WHERE ac.operator_id = ?
+    ORDER BY ac.request_id
     """, (operator_id,))
 
-    return cursor.fetchone()
+    return cursor.fetchall()
+
+
+def get_request_id_by_operator_message(operator_id, message_id):
+    """По какой заявке было отправлено конкретное сообщение оператору (для reply)."""
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT request_id FROM operator_messages
+    WHERE operator_id = ? AND message_id = ?
+    """, (operator_id, message_id))
+
+    row = cursor.fetchone()
+    return row[0] if row else None
 
 
 def get_user_history(user_id):
@@ -294,7 +402,7 @@ def get_request_by_id(request_id):
     return cursor.fetchone()
 
 
-def get_dashboard_requests(done_limit=20):
+def get_dashboard_requests(done_limit=50):
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -309,7 +417,15 @@ def get_dashboard_requests(done_limit=20):
     cursor.execute(base_select + "WHERE r.status NOT IN ('Выполнено', 'Отменена') ORDER BY r.id DESC")
     active = cursor.fetchall()
 
-    cursor.execute(base_select + "WHERE r.status IN ('Выполнено', 'Отменена') ORDER BY r.id DESC LIMIT ?", (done_limit,))
+    # Выполненные/отменённые показываем на доске только за сегодня —
+    # остальная история остаётся доступной во вкладке "Журнал"
+    cursor.execute(
+        base_select
+        + "WHERE r.status IN ('Выполнено', 'Отменена') AND date(r.updated_at) = date('now') "
+        + "ORDER BY r.id DESC LIMIT ?",
+        (done_limit,)
+    )
     done = cursor.fetchall()
 
     return active + done
+

@@ -10,12 +10,14 @@ const photosInput = document.getElementById("photos");
 const photoPreview = document.getElementById("photoPreview");
 const errorText = document.getElementById("errorText");
 
+// Предзаполняем имя данными из Telegram, если они есть
 const tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user;
 if (tgUser) {
   const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ");
   if (fullName) nameInput.value = fullName;
 }
 
+// Превью выбранных фото
 photosInput.addEventListener("change", () => {
   photoPreview.innerHTML = "";
   Array.from(photosInput.files).slice(0, 6).forEach((file) => {

@@ -6,7 +6,7 @@ from flask import request, jsonify, send_from_directory, send_file
 
 from config import TOKEN, OPERATOR_IDS, ADMIN_IDS
 from webapp import validate_init_data
-from database import get_dashboard_requests, get_all_operators_stats, get_all_requests
+from database import get_dashboard_requests, get_all_operators_stats, get_all_requests, get_events
 from handlers.operator_handlers import take_request, complete_request, postpone_request, resume_request, cancel_request, restore_request
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,31 @@ def register_dashboard(app, bot):
                 "name": r[6],
                 "phone": r[7],
                 "reason": r[8],
+            }
+            for r in rows
+        ]
+        return jsonify(ok=True, items=items)
+
+    # =========================
+    # ЖУРНАЛ СОБЫТИЙ (видно всем операторам)
+    # =========================
+    @app.route("/api/dashboard/events")
+    def api_events():
+        init_data = request.args.get("initData", "")
+        user = _check_operator(init_data)
+        if not user:
+            return jsonify(ok=False), 403
+
+        request_id = request.args.get("request_id")
+        rows = get_events(request_id=request_id)
+        items = [
+            {
+                "id": r[0],
+                "request_id": r[1],
+                "event_type": r[2],
+                "actor_name": r[3],
+                "details": r[4],
+                "created_at": r[5],
             }
             for r in rows
         ]

@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl
 from flask import request, jsonify, send_from_directory
 
 from config import TOKEN, OPERATOR_IDS
-from database import add_user, create_request, get_conn
+from database import add_user, create_request, get_conn, log_event
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,8 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int = 86
     """
     Проверяет подпись initData, которую прислал Telegram Mini App.
     Возвращает dict с данными пользователя, если подпись верна, иначе None.
+
+    Подробности алгоритма: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
     """
     if not init_data:
         return None
@@ -83,6 +85,7 @@ def _send_request_to_operators(bot, request_id, text, photos):
 
     conn.commit()
 
+    # Если фото было больше одного — остальные шлём отдельными сообщениями
     if len(photos) > 1:
         for extra in photos[1:]:
             data = extra.read()
@@ -124,6 +127,7 @@ def register_webapp(app, bot):
 
         add_user(user_id, name, phone)
         request_id = create_request(user_id, restaurant, description, None)
+        log_event(request_id, "create", name, f"{restaurant}: {description[:100]}")
 
         full_text = (
             f"📌 Новая заявка #{request_id} (из мини-приложения)\n\n"

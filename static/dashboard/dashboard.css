@@ -9,6 +9,7 @@
 }
 
 * { box-sizing: border-box; }
+
 [hidden] {
   display: none !important;
 }
@@ -228,6 +229,36 @@ body {
   justify-content: space-between;
   color: var(--hint);
   font-size: 13px;
+}
+
+.event-row {
+  background: var(--secondary-bg);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.event-top {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.event-time {
+  color: var(--hint);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.event-meta {
+  color: var(--hint);
+  margin-top: 2px;
+}
+
+.event-details {
+  margin-top: 4px;
+  color: var(--text);
 }
 
 .toast {

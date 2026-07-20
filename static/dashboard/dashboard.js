@@ -18,10 +18,47 @@ const countCancelled = document.getElementById("countCancelled");
 
 const toast = document.getElementById("toast");
 const tabs = document.getElementById("tabs");
+const statsTabBtn = document.getElementById("statsTabBtn");
 const boardView = document.getElementById("boardView");
+const journalView = document.getElementById("journalView");
+const journalList = document.getElementById("journalList");
 const statsView = document.getElementById("statsView");
 const statsTable = document.getElementById("statsTable");
 const exportBtn = document.getElementById("exportBtn");
+
+const EVENT_ICONS = {
+  create: "🆕",
+  take: "🔄",
+  complete: "✅",
+  postpone: "⏸",
+  resume: "▶️",
+  cancel: "🚫",
+  restore: "↩️",
+  rate: "⭐",
+  reminder: "⏰",
+};
+
+const EVENT_LABELS = {
+  create: "Заявка создана",
+  take: "Взята в работу",
+  complete: "Выполнена",
+  postpone: "Отложена",
+  resume: "Возобновлена",
+  cancel: "Отменена",
+  restore: "Восстановлена",
+  rate: "Оценена",
+  reminder: "Напоминание",
+};
+
+function formatEventDate(dt) {
+  if (!dt) return "";
+  try {
+    const d = new Date(dt.replace(" ", "T") + "Z");
+    return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch (e) {
+    return dt;
+  }
+}
 
 const reasonOverlay = document.getElementById("reasonOverlay");
 const modalTitle = document.getElementById("modalTitle");
@@ -289,6 +326,30 @@ async function loadStats() {
   `).join("") || `<p style="color:var(--hint)">Нет данных</p>`;
 }
 
+async function loadJournal() {
+  try {
+    const res = await fetch(`/api/dashboard/events?initData=${encodeURIComponent(initData)}`);
+    const data = await res.json();
+    if (!data.ok) {
+      showToast("Нет доступа");
+      return;
+    }
+
+    journalList.innerHTML = data.items.map((ev) => `
+      <div class="event-row">
+        <div class="event-top">
+          <span>${EVENT_ICONS[ev.event_type] || "•"} ${EVENT_LABELS[ev.event_type] || ev.event_type}</span>
+          <span class="event-time">${formatEventDate(ev.created_at)}</span>
+        </div>
+        <div class="event-meta">Заявка #${ev.request_id}${ev.actor_name ? " · " + escapeHtml(ev.actor_name) : ""}</div>
+        ${ev.details ? `<div class="event-details">${escapeHtml(ev.details)}</div>` : ""}
+      </div>
+    `).join("") || `<p style="color:var(--hint)">Пока пусто</p>`;
+  } catch (e) {
+    showToast("Нет соединения с сервером");
+  }
+}
+
 if (tabs) {
   tabs.addEventListener("click", (e) => {
     const btn = e.target.closest(".tab");
@@ -296,12 +357,17 @@ if (tabs) {
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
     btn.classList.add("active");
 
+    boardView.hidden = true;
+    journalView.hidden = true;
+    statsView.hidden = true;
+
     if (btn.dataset.tab === "board") {
       boardView.hidden = false;
-      statsView.hidden = true;
       loadRequests();
+    } else if (btn.dataset.tab === "journal") {
+      journalView.hidden = false;
+      loadJournal();
     } else {
-      boardView.hidden = true;
       statsView.hidden = false;
       loadStats();
     }
@@ -335,7 +401,7 @@ async function init() {
       return;
     }
     isAdmin = data.is_admin;
-    if (tabs) tabs.hidden = !isAdmin;
+    if (statsTabBtn) statsTabBtn.hidden = !isAdmin;
   } catch (e) {
     console.error("dashboard /me error:", e);
     // если /me не ответил — всё равно пробуем показать доску
