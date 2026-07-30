@@ -409,7 +409,7 @@ def get_dashboard_requests(done_limit=50):
     base_select = """
     SELECT
         r.id, r.restaurant_name, r.status, r.operator_name,
-        r.request_text, r.rating, u.name, u.phone, r.reason
+        r.request_text, r.rating, u.name, u.phone, r.reason, r.updated_at
     FROM requests r
     LEFT JOIN users u ON u.telegram_id = r.user_id
     """

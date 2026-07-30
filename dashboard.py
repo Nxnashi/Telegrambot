@@ -73,6 +73,7 @@ def register_dashboard(app, bot):
                 "name": r[6],
                 "phone": r[7],
                 "reason": r[8],
+                "updated_at": r[9],
             }
             for r in rows
         ]
