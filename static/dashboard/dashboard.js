@@ -144,6 +144,7 @@ function renderCard(item, column) {
   }
 
   const showReason = (item.status === "Отменена" || item.status === "Отложена") && item.reason;
+  const showCompletedAt = item.status === "Выполнено" && item.updated_at;
 
   card.innerHTML = `
     <div class="card-top">
@@ -152,6 +153,7 @@ function renderCard(item, column) {
     </div>
     <div class="card-desc">${escapeHtml(desc)}</div>
     ${item.operator_name ? `<div class="card-meta">👨‍💼 ${escapeHtml(item.operator_name)}</div>` : ""}
+    ${showCompletedAt ? `<div class="card-meta">✅ ${formatEventDate(item.updated_at)}</div>` : ""}
     ${item.rating ? `<div class="card-meta">⭐ ${escapeHtml(item.rating)}</div>` : ""}
     ${showReason ? `<div class="card-meta">📝 ${escapeHtml(item.reason)}</div>` : ""}
     ${actions}
@@ -168,6 +170,7 @@ function renderCard(item, column) {
         `Ресторан: ${item.restaurant}`,
         `Статус: ${item.status}`,
         item.operator_name ? `Оператор: ${item.operator_name}` : null,
+        showCompletedAt ? `Завершено: ${formatEventDate(item.updated_at)}` : null,
         item.reason ? `Причина: ${item.reason}` : null,
         "",
         item.description || ""
